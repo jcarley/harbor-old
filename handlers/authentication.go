@@ -33,8 +33,6 @@ func signIn(ctx context, w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	// fmt.Printf("User: %+v\n", user)
-
 	password_hash := user.PasswordHash
 	salt := user.PasswordSalt
 
