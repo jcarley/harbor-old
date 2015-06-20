@@ -7,4 +7,5 @@ curl -sL https://deb.nodesource.com/setup_0.12 | sudo bash - \
   && sudo rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/* \
   && sudo npm install npm -g
 
+sudo npm install -g yo
 
