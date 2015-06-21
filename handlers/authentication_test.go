@@ -70,9 +70,7 @@ func DeleteAll() {
 }
 
 func TestRegister(t *testing.T) {
-
 	RegisterTestingT(t)
-
 	defer DeleteAll()
 
 	// Test Setup
@@ -133,15 +131,7 @@ func TestUserLogin(t *testing.T) {
 	var response map[string]interface{}
 	err = json.Unmarshal(w.Body.Bytes(), &response)
 
-	fmt.Printf("%+v", response)
-
 	Expect(err).ShouldNot(HaveOccurred())
 	Expect(response["token"]).ToNot(BeNil())
 	Expect(response["expires"]).ToNot(BeNil())
-
 }
-
-// Code      int           // the HTTP response code from WriteHeader
-// HeaderMap http.Header   // the HTTP response headers
-// Body      *bytes.Buffer // if non-nil, the bytes.Buffer to append written data to
-// Flushed   bool

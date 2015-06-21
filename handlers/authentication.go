@@ -3,6 +3,7 @@ package handlers
 import (
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"time"
 
@@ -24,13 +25,20 @@ type AuthResponse struct {
 	Expires time.Time `json:"expires,omitempty"`
 }
 
+func Encode(writer io.Writer, data interface{}) error {
+	encoder := json.NewEncoder(writer)
+	return encoder.Encode(data)
+}
+
+func Decode(reader io.Reader, data interface{}) error {
+	decoder := json.NewDecoder(reader)
+	return decoder.Decode(data)
+}
+
 func login(ctx context, w http.ResponseWriter, req *http.Request) {
 
 	auth_request := AuthRequest{}
-
-	decoder := json.NewDecoder(req.Body)
-	err := decoder.Decode(&auth_request)
-	if err != nil {
+	if err := Decode(req.Body, &auth_request); err != nil {
 		fmt.Println(err.Error())
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -69,8 +77,12 @@ func login(ctx context, w http.ResponseWriter, req *http.Request) {
 			Expires: time.Now().Add(time.Hour * 24 * 7),
 		}
 
-		encoder := json.NewEncoder(w)
-		encoder.Encode(&auth_response)
+		if err := Encode(w, &auth_response); err != nil {
+			fmt.Println(err.Error())
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+
 	} else {
 		http.Redirect(w, req, "index.html", 301)
 	}
