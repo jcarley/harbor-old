@@ -1,24 +1,42 @@
 package handlers
 
 import (
+	"encoding/json"
 	"fmt"
 	"net/http"
+	"time"
 
 	"golang.org/x/crypto/scrypt"
 
 	r "github.com/dancannon/gorethink"
-
 	"github.com/gorilla/securecookie"
 	"github.com/jcarley/harbor/models"
 	"github.com/jcarley/harbor/service"
 )
 
-func signIn(ctx context, w http.ResponseWriter, req *http.Request) {
+type AuthRequest struct {
+	Email    string `json:"email"`
+	Password string `json:"password"`
+}
 
-	email := req.PostFormValue("inputEmail")
-	password := req.PostFormValue("inputPassword")
+type AuthResponse struct {
+	Token   string    `json:"token,omitempty"`
+	Expires time.Time `json:"expires,omitempty"`
+}
 
-	res, err := r.Db("harbor").Table("users").Filter(r.Row.Field("username").Eq(email)).Run(service.Session())
+func login(ctx context, w http.ResponseWriter, req *http.Request) {
+
+	auth_request := AuthRequest{}
+
+	decoder := json.NewDecoder(req.Body)
+	err := decoder.Decode(&auth_request)
+	if err != nil {
+		fmt.Println(err.Error())
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	res, err := r.Db("harbor").Table("users").Filter(r.Row.Field("username").Eq(auth_request.Email)).Run(service.Session())
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -36,10 +54,7 @@ func signIn(ctx context, w http.ResponseWriter, req *http.Request) {
 	password_hash := user.PasswordHash
 	salt := user.PasswordSalt
 
-	dk, _ := scrypt.Key([]byte(password), []byte(salt), 16384, 8, 1, 32)
-
-	fmt.Printf("%s\n", password_hash)
-	fmt.Printf("%x\n", dk)
+	dk, _ := scrypt.Key([]byte(auth_request.Password), []byte(salt), 16384, 8, 1, 32)
 
 	if password_hash == fmt.Sprintf("%x", dk) {
 		user_session := models.NewUserSession(user)
@@ -49,42 +64,53 @@ func signIn(ctx context, w http.ResponseWriter, req *http.Request) {
 		session.Values["sessionKey"] = user_session.SessionKey
 		session.Save(req, w)
 
-		w.Write([]byte("success"))
+		auth_response := AuthResponse{
+			Token:   fmt.Sprintf("%x", user_session.SessionKey),
+			Expires: time.Now().Add(time.Hour * 24 * 7),
+		}
+
+		encoder := json.NewEncoder(w)
+		encoder.Encode(&auth_response)
 	} else {
 		http.Redirect(w, req, "index.html", 301)
 	}
 
 }
 
-func register(ctx context, w http.ResponseWriter, r *http.Request) {
+func register(ctx context, w http.ResponseWriter, req *http.Request) {
 
-	email := r.PostFormValue("inputEmail")
-	password := r.PostFormValue("inputPassword")
+	auth_request := AuthRequest{}
+
+	decoder := json.NewDecoder(req.Body)
+	err := decoder.Decode(&auth_request)
+	if err != nil {
+		fmt.Println(err.Error())
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
 
 	salt := securecookie.GenerateRandomKey(32)
-	// salt := "d61162e555f68c3151133351fc908d688aa2bb1e5bab958859290c443eeec0bc"
-	dk, _ := scrypt.Key([]byte(password), salt, 16384, 8, 1, 32)
+	dk, _ := scrypt.Key([]byte(auth_request.Password), salt, 16384, 8, 1, 32)
 
 	password_hash := fmt.Sprintf("%x", dk)
 	password_salt := fmt.Sprintf("%x", salt)
 
 	user := models.User{
-		Username:     email,
+		Username:     auth_request.Email,
 		PasswordHash: password_hash,
 		PasswordSalt: password_salt,
+		IsDisabled:   false,
 	}
+	user.Created = time.Now()
 
-	fmt.Printf("%+v\n", user)
-
-	if email == "jeff.carley@gmail.com" && password == "password" {
-		session, _ := ctx.SessionStore().Get(r, "login")
-
-		session.Values["username"] = email
-		session.Values["sessionKey"] = string(securecookie.GenerateRandomKey(16))
-		session.Save(r, w)
-
-		w.Write([]byte("success"))
-	} else {
-		http.Redirect(w, r, "index.html", 301)
+	res, err := r.Db("harbor").Table("users").Insert(user).RunWrite(service.Session())
+	if err != nil {
+		fmt.Println(err.Error())
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
 	}
+	user.Id = res.GeneratedKeys[0]
+
+	encoder := json.NewEncoder(w)
+	encoder.Encode(user)
 }

@@ -1,10 +1,10 @@
 package handlers
 
 import (
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
-	"net/url"
 	"strings"
 	"testing"
 	"time"
@@ -12,6 +12,7 @@ import (
 	r "github.com/dancannon/gorethink"
 	"github.com/jcarley/harbor/models"
 	"github.com/jcarley/harbor/service"
+	. "github.com/onsi/gomega"
 )
 
 const (
@@ -24,7 +25,6 @@ const (
 func CreateTestUser() (models.User, error) {
 	user := models.User{
 		Username:     "jeff.carley@gmail.com",
-		Fullname:     "Jefferson Carley",
 		PasswordHash: "0b2f219acb4b0cd9c5181f77ed41484fc286d0c11878005be2d4e7695255e2dc",
 		PasswordSalt: "d61162e555f68c3151133351fc908d688aa2bb1e5bab958859290c443eeec0bc",
 		IsDisabled:   false,
@@ -40,6 +40,19 @@ func CreateTestUser() (models.User, error) {
 	return user, nil
 }
 
+func UserCount() (int, error) {
+	res, err := r.Db("harbor").Table("users").Count().Run(service.Session())
+	if err != nil {
+		return 0, err
+	}
+	defer res.Close()
+
+	var count int
+	res.One(&count)
+
+	return count, nil
+}
+
 func DeleteUser(user models.User) {
 	_, err := r.Db("harbor").Table("users").Get(user.Id).Delete().Run(service.Session())
 	if err != nil {
@@ -48,38 +61,87 @@ func DeleteUser(user models.User) {
 	}
 }
 
-func TestUserSignIn(t *testing.T) {
+func DeleteAll() {
+	_, err := r.Db("harbor").Table("users").Delete().Run(service.Session())
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+}
+
+func TestRegister(t *testing.T) {
+
+	RegisterTestingT(t)
+
+	defer DeleteAll()
+
+	// Test Setup
+	current_count, err := UserCount()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Send register request
+	body :=
+		`{
+			"email":"jcarley@gmail.com",
+			"password":"secret"
+		}`
+
+	req, err := http.NewRequest("POST", "/register", strings.NewReader(body))
+	Expect(err).ShouldNot(HaveOccurred(), "Should be able to create a request")
+
+	req.Header.Add("Content-Type", "application/json")
+
+	// Run test
+	w := httptest.NewRecorder()
+	router := NewRouter()
+	router.ServeHTTP(w, req)
+
+	Expect(w.Code).To(Equal(200), "Should receive 200 status")
+
+	// Assert if a user was added
+	actual_count, err := UserCount()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	Expect(actual_count > current_count).To(BeTrue(), "Expected user count to be greater than %d, but was %d", current_count, actual_count)
+}
+
+func TestUserLogin(t *testing.T) {
+	RegisterTestingT(t)
 
 	user, _ := CreateTestUser()
 	defer DeleteUser(user)
 
-	formData := url.Values{}
-	formData.Add("inputEmail", user.Username)
-	formData.Add("inputPassword", "password")
-	body := strings.NewReader(formData.Encode())
+	// Send register request
+	body := fmt.Sprintf(`{"email":"%s", "password":"%s"}`, user.Username, "password")
 
-	req, err := http.NewRequest("POST", "/signin", body)
-	if err != nil {
-		t.Fatal("Should be able to create a request", ballotX, err)
-	}
-	t.Log("Should be able to create a request", checkMark)
+	req, err := http.NewRequest("POST", "/login", strings.NewReader(body))
+	Expect(err).ShouldNot(HaveOccurred(), "Should be able to create a request")
 
-	req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
+	req.Header.Add("Content-Type", "application/json")
 
 	w := httptest.NewRecorder()
 
 	router := NewRouter()
 	router.ServeHTTP(w, req)
 
-	if w.Code != 200 {
-		t.Fatal("Should receive 200 status", ballotX, w.Code)
-	}
-	t.Log("Should receive 200 status", checkMark)
+	Expect(w.Code).To(Equal(200), "Should receive 200 status")
 
-	cookie := w.Header()["Set-Cookie"]
-	if len(cookie) == 0 {
-		t.Fatal("Should have auth cookies", ballotX)
-	}
-	t.Log("Should have auth cookies", checkMark)
+	var response map[string]interface{}
+	err = json.Unmarshal(w.Body.Bytes(), &response)
+
+	fmt.Printf("%+v", response)
+
+	Expect(err).ShouldNot(HaveOccurred())
+	Expect(response["token"]).ToNot(BeNil())
+	Expect(response["expires"]).ToNot(BeNil())
 
 }
+
+// Code      int           // the HTTP response code from WriteHeader
+// HeaderMap http.Header   // the HTTP response headers
+// Body      *bytes.Buffer // if non-nil, the bytes.Buffer to append written data to
+// Flushed   bool

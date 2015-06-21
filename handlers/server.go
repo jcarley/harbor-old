@@ -65,13 +65,10 @@ func NewRouter() http.Handler {
 	}
 
 	router := mux.NewRouter()
-	// Setup the WS Hub here
 
 	// Add handlers for routes
-	router.Handle("/signup", http.RedirectHandler("/signup.html", 307)).Methods("GET")
-	router.Handle("/signin", appHandler{appContext, signIn}).Methods("POST")
-
-	// Add handlers for websockets
+	router.Handle("/login", appHandler{appContext, login}).Methods("POST")
+	router.Handle("/register", appHandler{appContext, register}).Methods("POST")
 
 	return router
 }
