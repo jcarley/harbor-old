@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -15,9 +16,26 @@ import (
 	"github.com/jcarley/harbor/service"
 )
 
+var (
+	ErrMissingEmailAddress = errors.New("Email address is required")
+	ErrMissingPassword     = errors.New("Password is required")
+)
+
 type AuthRequest struct {
 	Email    string `json:"email"`
 	Password string `json:"password"`
+}
+
+func (this *AuthRequest) Valid() error {
+	if this.Email == "" {
+		return ErrMissingEmailAddress
+	}
+
+	if this.Password == "" {
+		return ErrMissingPassword
+	}
+
+	return nil
 }
 
 type AuthResponse struct {
@@ -98,6 +116,13 @@ func register(ctx context, w http.ResponseWriter, req *http.Request) {
 	if err != nil {
 		fmt.Println(err.Error())
 		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	// TODO: find a better way of sending a json error message
+	if err := auth_request.Valid(); err != nil {
+		error_message := `{"message": "%s"}`
+		http.Error(w, fmt.Sprintf(error_message, err.Error()), http.StatusBadRequest)
 		return
 	}
 

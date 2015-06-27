@@ -69,7 +69,7 @@ func DeleteAll() {
 	}
 }
 
-func TestRegister(t *testing.T) {
+func TestRegisterSuccess(t *testing.T) {
 	RegisterTestingT(t)
 	defer DeleteAll()
 
@@ -105,6 +105,60 @@ func TestRegister(t *testing.T) {
 	}
 
 	Expect(actual_count > current_count).To(BeTrue(), "Expected user count to be greater than %d, but was %d", current_count, actual_count)
+}
+
+func TestRegisterFail_MissingAuthRequestParams(t *testing.T) {
+	RegisterTestingT(t)
+	defer DeleteAll()
+
+	// Test Setup
+	current_count, err := UserCount()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Register requests
+	requests := []string{
+		`{
+			"email":"jeff.carley@gmail.com",
+			"password":""
+		}`,
+		`{
+			"email":"",
+			"password":"secret"
+		}`,
+	}
+
+	for idx, body := range requests {
+		req, err := http.NewRequest("POST", "/register", strings.NewReader(body))
+		Expect(err).ShouldNot(HaveOccurred(), "Should be able to create a request")
+
+		req.Header.Add("Content-Type", "application/json")
+
+		// Run test
+		w := httptest.NewRecorder()
+		router := NewRouter()
+		router.ServeHTTP(w, req)
+
+		Expect(w.Code).To(Equal(http.StatusBadRequest), "Should receive 400 status")
+
+		// TODO: need to find a better way of asserting this
+		var json string
+		if idx == 0 {
+			json = `{"message": "Password is required"}`
+		} else if idx == 1 {
+			json = `{"message": "Email address is required"}`
+		}
+		Expect(w.Body.String()).To(MatchJSON(json))
+
+		// Assert if a user was added
+		actual_count, err := UserCount()
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		Expect(actual_count).To(Equal(current_count), "Expected user count to equal %d, but was %d", current_count, actual_count)
+	}
 }
 
 func TestUserLogin(t *testing.T) {

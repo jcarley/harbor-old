@@ -1,1 +1,6 @@
 Godeps
+bower_components
+generator-angular
+gulp
+node_modules
+dist
