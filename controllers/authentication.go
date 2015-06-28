@@ -65,7 +65,8 @@ func (this *AuthenticationController) login(w http.ResponseWriter, req *http.Req
 		}
 
 	} else {
-		http.Redirect(w, req, "index.html", 301)
+		error_message := `{"message": "%s"}`
+		http.Error(w, fmt.Sprintf(error_message, "Username or password incorrect"), http.StatusForbidden)
 	}
 
 }
