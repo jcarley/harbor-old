@@ -3,12 +3,10 @@ package service
 import (
 	"log"
 
-	"github.com/codegangsta/negroni"
 	r "github.com/dancannon/gorethink"
 )
 
 var (
-	router  *negroni.Negroni
 	session *r.Session
 )
 

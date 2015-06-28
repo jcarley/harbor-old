@@ -1,7 +1,0 @@
-#!/usr/bin/env bash
-
-# -*- mode: sh -*-
-# vi: set ft=sh :
-
-rm -rf Cellar
-docker rmi $(docker images -q)

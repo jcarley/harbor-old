@@ -1,4 +1,4 @@
-package handlers
+package controllers
 
 import (
 	"encoding/json"
@@ -12,6 +12,7 @@ import (
 	r "github.com/dancannon/gorethink"
 	"github.com/jcarley/harbor/models"
 	"github.com/jcarley/harbor/service"
+	"github.com/jcarley/harbor/web"
 	. "github.com/onsi/gomega"
 )
 
@@ -93,8 +94,8 @@ func TestRegisterSuccess(t *testing.T) {
 
 	// Run test
 	w := httptest.NewRecorder()
-	router := NewRouter()
-	router.ServeHTTP(w, req)
+	controller := NewAuthenticationController(nil)
+	controller.register(w, req)
 
 	Expect(w.Code).To(Equal(200), "Should receive 200 status")
 
@@ -137,8 +138,8 @@ func TestRegisterFail_MissingAuthRequestParams(t *testing.T) {
 
 		// Run test
 		w := httptest.NewRecorder()
-		router := NewRouter()
-		router.ServeHTTP(w, req)
+		controller := NewAuthenticationController(nil)
+		controller.register(w, req)
 
 		Expect(w.Code).To(Equal(http.StatusBadRequest), "Should receive 400 status")
 
@@ -177,8 +178,10 @@ func TestUserLogin(t *testing.T) {
 
 	w := httptest.NewRecorder()
 
-	router := NewRouter()
-	router.ServeHTTP(w, req)
+	store := web.NewCookieStore()
+	appContext := web.NewContext(store)
+	controller := NewAuthenticationController(appContext)
+	controller.login(w, req)
 
 	Expect(w.Code).To(Equal(200), "Should receive 200 status")
 

@@ -1,4 +1,4 @@
-package handlers
+package main
 
 import (
 	"log"
@@ -7,22 +7,13 @@ import (
 
 	"github.com/codegangsta/negroni"
 	"github.com/gorilla/mux"
-	"github.com/gorilla/securecookie"
-	"github.com/gorilla/sessions"
+	"github.com/jcarley/harbor/controllers"
+	"github.com/jcarley/harbor/web"
 )
 
 var (
 	router *negroni.Negroni
 )
-
-type appHandler struct {
-	*ctx
-	handler func(context, http.ResponseWriter, *http.Request)
-}
-
-func (this appHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	this.handler(this.ctx, w, r)
-}
 
 func NewServer() *http.Server {
 	wd, _ := os.Getwd()
@@ -53,22 +44,14 @@ func StartServer(server *http.Server) {
 func NewRouter() http.Handler {
 
 	// Setup session store
-	authKey := securecookie.GenerateRandomKey(64)
-	encryptionKey := securecookie.GenerateRandomKey(32)
-	store := sessions.NewCookieStore(
-		authKey,
-		encryptionKey,
-	)
-
-	appContext := &ctx{
-		sessionStore: store,
-	}
+	store := web.NewCookieStore()
+	appContext := web.NewContext(store)
 
 	router := mux.NewRouter()
 
 	// Add handlers for routes
-	router.Handle("/login", appHandler{appContext, login}).Methods("POST")
-	router.Handle("/register", appHandler{appContext, register}).Methods("POST")
+	authenticationController := controllers.NewAuthenticationController(appContext)
+	authenticationController.Register(router)
 
 	return router
 }

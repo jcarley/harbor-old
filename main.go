@@ -4,13 +4,12 @@ import (
 	"fmt"
 
 	"github.com/jcarley/harbor/command"
-	"github.com/jcarley/harbor/handlers"
 	"github.com/jcarley/harbor/models"
 )
 
 func main() {
-	server := handlers.NewServer()
-	handlers.StartServer(server)
+	server := NewServer()
+	StartServer(server)
 }
 
 func testImageBuild() {

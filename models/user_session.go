@@ -24,7 +24,7 @@ type UserSession struct {
 	LastSeenTime time.Time `gorethink:"last_seen_time"`
 }
 
-func NewUserSession(user User) UserSession {
+func NewUserSession(user *User) UserSession {
 	return UserSession{
 		SessionKey:   string(securecookie.GenerateRandomKey(16)),
 		UserId:       user.Id,
