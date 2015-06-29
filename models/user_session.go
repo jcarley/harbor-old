@@ -2,19 +2,17 @@ package models
 
 import (
 	"errors"
+	"fmt"
 	"time"
 
+	r "github.com/dancannon/gorethink"
 	"github.com/gorilla/securecookie"
+	"github.com/jcarley/harbor/service"
 )
 
 var (
 	ErrUserSessionNotFound = errors.New("User session not found")
 )
-
-type UserSessionStore interface {
-	Get(sessionKey string) (UserSession, error)
-	Save(session UserSession) error
-}
 
 type UserSession struct {
 	Id           string    `gorethink:"id,omitempty"`
@@ -22,37 +20,42 @@ type UserSession struct {
 	UserId       string    `gorethink:"user_id"`
 	LoginTime    time.Time `gorethink:"login_time"`
 	LastSeenTime time.Time `gorethink:"last_seen_time"`
+	Created      time.Time `gorethink:"created"`
+	Updated      time.Time `gorethink:"updated"`
 }
 
-func NewUserSession(user *User) UserSession {
-	return UserSession{
-		SessionKey:   string(securecookie.GenerateRandomKey(16)),
+func NewUserSession(user *User) *UserSession {
+	session_key := fmt.Sprintf("%x", securecookie.GenerateRandomKey(16))
+	session := UserSession{
+		SessionKey:   session_key,
 		UserId:       user.Id,
 		LoginTime:    time.Now(),
 		LastSeenTime: time.Now(),
 	}
+	session.Created = time.Now()
+	session.Updated = time.Now()
+	return &session
 }
 
-type MemoryUserSessionStore struct {
-	db map[string]UserSession
-}
-
-func NewMemoryUserSessionStore() MemoryUserSessionStore {
-	return MemoryUserSessionStore{
-		db: make(map[string]UserSession),
+func (this *UserSession) Save() error {
+	res, err := this.coll().Insert(this).RunWrite(service.Session())
+	if err != nil {
+		return err
 	}
-}
+	this.Id = res.GeneratedKeys[0]
 
-func (this *MemoryUserSessionStore) Get(sessionKey string) (UserSession, error) {
-	user_session, exists := this.db[sessionKey]
-	if exists {
-		return user_session, nil
-	} else {
-		return UserSession{}, ErrUserSessionNotFound
-	}
-}
-
-func (this *MemoryUserSessionStore) Save(session UserSession) error {
-	this.db[session.SessionKey] = session
 	return nil
+}
+
+func (this *UserSession) FindBySessionKey(session_key string) error {
+	res, err := this.coll().Filter(r.Row.Field("session_key").Eq(session_key)).Run(service.Session())
+	if err != nil {
+		return ErrUserSessionNotFound
+	}
+	defer res.Close()
+	return res.One(this)
+}
+
+func (this *UserSession) coll() r.Term {
+	return r.Db("harbor").Table("user_sessions")
 }

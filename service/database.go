@@ -25,6 +25,7 @@ func init() {
 
 	r.DbCreate("harbor").RunWrite(session)
 	r.Db("harbor").TableCreate("users").Run(session)
+	r.Db("harbor").TableCreate("user_sessions").Run(session)
 }
 
 func Session() *r.Session {

@@ -47,14 +47,10 @@ func (this *AuthenticationController) login(w http.ResponseWriter, req *http.Req
 
 	if this.authorize(auth_request, user) {
 		user_session := models.NewUserSession(user)
-
-		session, _ := this.Context.SessionStore().Get(req, "login")
-		session.Values["username"] = user.Username
-		session.Values["sessionKey"] = user_session.SessionKey
-		session.Save(req, w)
+		user_session.Save()
 
 		auth_response := view_models.AuthResponse{
-			Token:   fmt.Sprintf("%x", user_session.SessionKey),
+			Token:   user_session.SessionKey,
 			Expires: time.Now().Add(time.Hour * 24 * 7),
 		}
 

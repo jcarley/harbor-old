@@ -39,11 +39,27 @@ func (this *User) Save() error {
 	return nil
 }
 
-func (this *User) FindByUsername(username string) error {
-	res, err := r.Db("harbor").Table("users").Filter(r.Row.Field("username").Eq(username)).Run(service.Session())
+func (this *User) FindById(userId string) error {
+	res, err := this.coll().Get(userId).Run(service.Session())
 	if err != nil {
 		return err
 	}
 	defer res.Close()
 	return res.One(this)
+}
+
+func (this *User) FindByUsername(username string) error {
+	res, err := this.coll().Filter(r.Row.Field("username").Eq(username)).Run(service.Session())
+	if err != nil {
+		return err
+	}
+	defer res.Close()
+	return res.One(this)
+}
+
+func (this *User) one(r.Term) {
+}
+
+func (this *User) coll() r.Term {
+	return r.Db("harbor").Table("users")
 }
