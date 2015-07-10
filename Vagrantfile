@@ -24,12 +24,12 @@ Vagrant.configure(2) do |config|
 
   config.vm.box = "boxcutter/ubuntu1404-docker"
 
-  config.vm.provision "file", source: "scripts/base.sh", destination: "~/base.sh"
-  config.vm.provision "file", source: "scripts/golang.sh", destination: "~/golang.sh"
-  config.vm.provision "file", source: "scripts/redb-database.sh", destination: "~/redb-database.sh"
-  config.vm.provision "file", source: "scripts/files/rethinkdb/instance1.conf", destination: "~/files/rethinkdb/instance1.conf"
+  # config.vm.provision "file", source: "scripts/base.sh", destination: "~/base.sh"
+  # config.vm.provision "file", source: "scripts/golang.sh", destination: "~/golang.sh"
+  # config.vm.provision "file", source: "scripts/redb-database.sh", destination: "~/redb-database.sh"
+  # config.vm.provision "file", source: "scripts/files/rethinkdb/instance1.conf", destination: "~/files/rethinkdb/instance1.conf"
 
-  config.vm.provision "shell", path: "scripts/runner.sh"
+  # config.vm.provision "shell", path: "scripts/runner.sh"
 
   config.vm.network :private_network, ip: "33.33.33.4"
   config.vm.network :forwarded_port, guest: 3000, host: 3000, :auto => true
@@ -38,9 +38,9 @@ Vagrant.configure(2) do |config|
 
   ## Share the default `vagrant` folder via NFS with your own options
   # config.vm.synced_folder ".", "/vagrant", type: :nfs
-  config.bindfs.bind_folder "/vagrant", "/vagrant"
-  config.vm.synced_folder ".", "/vagrant", disabled: true
+  # config.bindfs.bind_folder "/vagrant", "/vagrant"
+  # config.vm.synced_folder ".", "/vagrant", disabled: true
 
-  config.vm.synced_folder ENV['GOPATH'], "/home/vagrant/go", :nfs => true
+  config.vm.synced_folder ".", "/home/vagrant/go", :nfs => true
   config.bindfs.bind_folder "/home/vagrant/go", "/home/vagrant/go"
 end
