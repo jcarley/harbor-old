@@ -2,4 +2,4 @@
 .vagrant
 rethinkdb_data
 keys.txt
-
+.env.registry
