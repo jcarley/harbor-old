@@ -20,6 +20,10 @@ $script = <<-EOF
   curl -sL https://github.com/docker/compose/releases/download/1.3.1/docker-compose-`uname -s`-`uname -m` > /usr/local/bin/docker-compose
   chmod +x /usr/local/bin/docker-compose
 
+  echo "DOCKER_OPTS=\"$DOCKER_OPTS --insecure-registry localhost:5000\"" >> /etc/default/docker
+  stop docker
+  start docker
+
   cd /home/vagrant/go
   docker-compose up -d
 EOF
