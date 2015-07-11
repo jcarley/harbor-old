@@ -15,6 +15,12 @@ required_plugins.each do |plugin|
   exec "vagrant #{ARGV.join(' ')}" if need_restart
 end
 
+
+$script = <<-EOF
+  cd /home/vagrant/go
+  docker-compose up -d
+EOF
+
 Vagrant.configure(2) do |config|
 
   config.vm.provider :vmware_fusion do |v|
@@ -30,6 +36,8 @@ Vagrant.configure(2) do |config|
   # config.vm.provision "file", source: "scripts/files/rethinkdb/instance1.conf", destination: "~/files/rethinkdb/instance1.conf"
 
   # config.vm.provision "shell", path: "scripts/runner.sh"
+
+  config.vm.provision "shell", inline: $script, run: "once", :privileged => true
 
   config.vm.network :private_network, ip: "33.33.33.4"
   config.vm.network :forwarded_port, guest: 3000, host: 3000, :auto => true
