@@ -3,9 +3,6 @@ redis:
   restart: always
   ports:
     - "6379"
-  labels:
-    com.finishfirstsoftware.application.name: "redis"
-    com.finishfirstsoftware.application.version: "3.0.2"
 registryv2:
   image: registry:2.0.1
   restart: always
@@ -18,13 +15,12 @@ registryv2:
     - REGISTRY_STORAGE_CACHE_BLOBDESCRIPTOR=redis
     - REGISTRY_HTTP_ADDR=:5000
     - REGISTRY_REDIS_ADDR=redis:6379
+    - SERVICE_5000_NAME=registryv2
+    - SERVICE_NAME=registryv2
   env_file:
     - .env.registry
   links:
     - redis
-  labels:
-    com.finishfirstsoftware.application.name: "registry"
-    com.finishfirstsoftware.application.version: "v2"
 nginx:
   image: nginx:1.9
   restart: always
@@ -32,10 +28,40 @@ nginx:
     - "5000:5000"
   links:
     - registryv2
+  environment:
+    - SERVICE_5000_NAME=registry
   volumes:
     - $PWD/nginx.conf:/etc/nginx/nginx.conf
     - $PWD/registry.conf:/etc/nginx/conf.d/registry.conf
     - $PWD/docker-registry-v2.conf:/etc/nginx/docker-registry-v2.conf
-  labels:
-    com.finishfirstsoftware.application.name: "registry-proxy"
-    com.finishfirstsoftware.application.version: "1.9"
+consul:
+  image: jcarley/docker-consul:0.5
+  ports:
+    - "8300"
+    - "8301"
+    - "8301/udp"
+    - "8302"
+    - "8302/udp"
+    - "8400"
+    - "8500"
+    - "8600"
+    - "8600/udp"
+  environment:
+    - GOMAXPROCS=4
+    - SERVICE_8500_NAME=dashboard
+    - DNS_RESOLVES=consul
+    - DNS_PORT=8600
+  command: -bootstrap-expect 1
+resolvable:
+  image: mgood/resolvable:latest
+  hostname: resolvable
+  volumes:
+    - /var/run/docker.sock:/tmp/docker.sock
+    - /etc/resolv.conf:/tmp/resolv.conf
+registrator:
+  image: gliderlabs/registrator:master
+  volumes:
+    - /var/run/docker.sock:/tmp/docker.sock
+  links:
+    - consul
+  command: -internal -resync 60 consul://consul:8500
