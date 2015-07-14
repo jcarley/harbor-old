@@ -65,3 +65,19 @@ registrator:
   links:
     - consul
   command: -internal -resync 60 consul://consul:8500
+elasticsearch:
+  image: elasticsearch:1.6
+  ports:
+    - "9200:9200"
+  command: -Des.http.cors.enabled=true
+calaca:
+  image: dockerinaction/ch10_calaca
+  ports:
+    - "3000:3000"
+pump:
+  image: dockerinaction/ch10_pump
+  ports:
+    - "8000"
+  links:
+    - elasticsearch
+
