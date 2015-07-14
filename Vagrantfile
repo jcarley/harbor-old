@@ -17,15 +17,20 @@ end
 
 
 $script = <<-EOF
-  curl -sL https://github.com/docker/compose/releases/download/1.3.1/docker-compose-`uname -s`-`uname -m` > /usr/local/bin/docker-compose
+  curl -s -L https://github.com/docker/compose/releases/download/1.3.1/docker-compose-`uname -s`-`uname -m` > /usr/local/bin/docker-compose
   chmod +x /usr/local/bin/docker-compose
 
-  echo "DOCKER_OPTS=\"$DOCKER_OPTS --insecure-registry localhost:5000\"" >> /etc/default/docker
+  echo 'DOCKER_OPTS="--insecure-registry localhost:5000"' >> /etc/default/docker
   stop docker
+  sleep 1
   start docker
 
   cd /home/vagrant/go
   docker-compose up -d
+
+  sleep 2
+
+  curl -s -w '\n' localhost:5000/v2/jcarley/docker-jq/tags/list
 EOF
 
 Vagrant.configure(2) do |config|
