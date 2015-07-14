@@ -53,6 +53,7 @@ Vagrant.configure(2) do |config|
 
   config.vm.network :private_network, ip: "33.33.33.4"
   config.vm.network :forwarded_port, guest: 3000, host: 3000, :auto => true
+  config.vm.network :forwarded_port, guest: 9200, host: 9200, :auto => true
   config.vm.network :forwarded_port, guest: 80, host: 80, :auto => true
   config.vm.network :forwarded_port, guest: 8080, host: 8080, :auto => true
 
